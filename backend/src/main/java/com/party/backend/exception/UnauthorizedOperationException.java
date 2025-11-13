@@ -1,0 +1,11 @@
+package com.party.backend.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(value = HttpStatus.FORBIDDEN)
+public class UnauthorizedOperationException extends RuntimeException {
+    public UnauthorizedOperationException(String message) {
+        super(message);
+    }
+}
