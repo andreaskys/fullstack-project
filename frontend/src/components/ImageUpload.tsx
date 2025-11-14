@@ -5,10 +5,10 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
 type ImageUploadProps = {
-    listingId: number;
+    onUploadSuccess: (url: string) => void;
 };
 
-export default function ImageUpload({ listingId }: ImageUploadProps) {
+export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
     const [file, setFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -21,13 +21,12 @@ export default function ImageUpload({ listingId }: ImageUploadProps) {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!file) {
             setError('Por favor, selecione um ficheiro.');
             return;
         }
-
         setIsUploading(true);
         setError(null);
 
@@ -35,7 +34,7 @@ export default function ImageUpload({ listingId }: ImageUploadProps) {
         formData.append('file', file);
 
         try {
-            const res = await fetch(`/api/listings/${listingId}/images`, {
+            const res = await fetch('/api/media/upload', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -51,10 +50,11 @@ export default function ImageUpload({ listingId }: ImageUploadProps) {
                 throw new Error('Falha no upload da imagem.');
             }
 
+
+            const data = await res.json();
             alert('Imagem enviada com sucesso!');
+            onUploadSuccess(data.url);
             setFile(null);
-            (e.target as HTMLFormElement).reset();
-            router.refresh();
 
         } catch (err: any) {
             setError(err.message);
@@ -64,9 +64,9 @@ export default function ImageUpload({ listingId }: ImageUploadProps) {
     };
 
     return (
-        <div className="p-6 border border-gray-300 rounded-lg bg-gray-50 mt-8">
-            <h3 className="text-xl font-semibold mb-4">Adicionar Novas Imagens</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="p-6 border border-gray-300 rounded-lg bg-gray-50">
+            <h3 className="text-xl font-semibold mb-4 text-gray-900">Imagem de Capa (Obrigatória)</h3>
+            <div className="space-y-4">
                 <input
                     type="file"
                     onChange={handleFileChange}
@@ -80,14 +80,15 @@ export default function ImageUpload({ listingId }: ImageUploadProps) {
                 />
                 {error && <p className="text-sm text-red-600">{error}</p>}
                 <button
-                    type="submit"
+                    type="button"
+                    onClick={handleUpload}
                     disabled={isUploading || !file}
                     className="w-full px-4 py-2 font-semibold text-white bg-green-600 rounded-md
                      hover:bg-green-700 disabled:bg-gray-400"
                 >
                     {isUploading ? 'A enviar...' : 'Enviar Imagem'}
                 </button>
-            </form>
+            </div>
         </div>
     );
 }

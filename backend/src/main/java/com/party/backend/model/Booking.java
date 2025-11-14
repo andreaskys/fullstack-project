@@ -2,13 +2,17 @@ package com.party.backend.model;
 
 import com.party.backend.model.enums.BookingStatus;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
-@Data
+@Getter
+@Setter
+@ToString(exclude = {"images", "videos", "amenities", "bookings"})
 @NoArgsConstructor
 @Entity
 @Table(name = "booking")
@@ -42,6 +46,8 @@ public class Booking {
     @JoinColumn(name = "listing_id", nullable = false)
     private Listing listing;
 
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ChatMessage> chatMessages = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {

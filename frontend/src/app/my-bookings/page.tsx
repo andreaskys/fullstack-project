@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 type BookingResponse = {
     id: number;
@@ -77,26 +78,39 @@ if (error) {
     );
 }
 
-return (
-    <main className="p-8 max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Minhas Reservas</h1>
+    return (
+        <main className="p-8 max-w-4xl mx-auto bg-gray-100 text-gray-900 min-h-screen">
+            <h1 className="text-3xl font-bold mb-8">Minhas Reservas</h1>
 
-        {bookings.length === 0 ? (
-            <p>Você ainda não fez nenhuma reserva.</p>
-        ) : (
-            <div className="space-y-4">
-                {bookings.map((booking) => (
-                    <div key={booking.id} className="bg-white p-4 rounded-lg shadow-md border">
-                        <h2 className="text-xl font-semibold">{booking.listingTitle}</h2>
-                        <p><strong>ID da Reserva:</strong> {booking.id}</p>
-                        <p><strong>Check-in:</strong> {new Date(booking.checkInDate).toLocaleDateString()}</p>
-                        <p><strong>Check-out:</strong> {new Date(booking.checkOutDate).toLocaleDateString()}</p>
-                        <p><strong>Preço Total:</strong> R$ {booking.totalPrice.toFixed(2)}</p>
-                        <p><strong>Status:</strong> <span className="font-medium text-blue-600">{booking.status}</span></p>
-                    </div>
-                ))}
-            </div>
-        )}
-    </main>
-);
+            {bookings.length === 0 ? (
+                <p>Você ainda não fez nenhuma reserva.</p>
+            ) : (
+                <div className="space-y-4">
+                    {bookings.map((booking) => (
+                        <div key={booking.id} className="bg-white text-gray-800 p-6 rounded-lg shadow-md border">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h2 className="text-2xl font-semibold">{booking.listingTitle}</h2>
+                                    <p className="text-sm text-gray-500">ID da Reserva: {booking.id}</p>
+                                </div>
+                                <Link
+                                    href={`/chat/${booking.id}`}
+                                    className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                                >
+                                    Iniciar Chat
+                                </Link>
+                            </div>
+
+                            <div className="border-t my-4"></div>
+
+                            <p><strong>Check-in:</strong> {new Date(booking.checkInDate).toLocaleDateString()}</p>
+                            <p><strong>Check-out:</strong> {new Date(booking.checkOutDate).toLocaleDateString()}</p>
+                            <p><strong>Preço Total:</strong> R$ {booking.totalPrice.toFixed(2)}</p>
+                            <p><strong>Status:</strong> <span className="font-medium text-blue-600">{booking.status}</span></p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </main>
+    );
 }

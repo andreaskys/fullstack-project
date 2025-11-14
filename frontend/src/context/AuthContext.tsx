@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -25,17 +25,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
     }, []);
 
-    const login = (newToken: string) => {
+    const login = useCallback((newToken: string) => {
         setToken(newToken);
         localStorage.setItem('jwtToken', newToken);
         router.push('/');
-    };
+    }, [router]);
 
-    const logout = () => {
+    const logout = useCallback(() => {
         setToken(null);
         localStorage.removeItem('jwtToken');
         router.push('/login');
-    };
+    }, [router])
 
     const isAuthenticated = !!token;
 

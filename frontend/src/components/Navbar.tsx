@@ -17,13 +17,13 @@ export default function Navbar() {
                 <div className="flex items-center space-x-4">
 
                     {isAuthenticated ? (
-
                         <>
-
                             <Link href="/create-listing" className="font-semibold text-blue-600 hover:text-blue-800">
                                 Criar Espaço
                             </Link>
-
+                            <Link href="/my-listings" className="text-gray-700 hover:text-blue-600">
+                                Meus Espaços
+                            </Link>
                             <Link href="/my-bookings" className="text-black hover:text-blue-600">
                                 Minhas Reservas
                             </Link>
@@ -34,7 +34,6 @@ export default function Navbar() {
                                 Logout
                             </button>
                         </>
-
                     ) : (
                         <>
                             <Link href="/login" className="text-gray-700 hover:text-blue-600">

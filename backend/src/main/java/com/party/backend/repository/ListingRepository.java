@@ -40,4 +40,11 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     @Query(value = "DELETE FROM listing_amenity WHERE listing_id = :listingId", nativeQuery = true)
     void deleteAmenitiesByListingId(@Param("listingId") Long listingId);
 
+    /*@Query("SELECT DISTINCT l FROM Listing l " +
+            "LEFT JOIN FETCH l.bookings b " +
+            "LEFT JOIN FETCH b.user " +
+            "LEFT JOIN FETCH l.images i " +
+            "WHERE l.host.id = :hostId AND (i.isCover = true OR l.images IS EMPTY)")
+    List<Listing> findHostListingsWithBookings(@Param("hostId") Long hostId);*/
+
 }

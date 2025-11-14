@@ -37,5 +37,12 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 
+    @GetMapping("/as-host")
+    public ResponseEntity<List<BookingResponseDTO>> getBookingsAsHost(
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(bookingService.getBookingsForHost(currentUser));
+    }
+
     // TODO: Adicionar endpoints para o host ver as reservas do seu espaço (GET /api/listings/{id}/bookings)
 }

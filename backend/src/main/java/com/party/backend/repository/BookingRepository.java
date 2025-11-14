@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -33,4 +34,24 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query(value = "DELETE FROM booking WHERE listing_id = :listingId", nativeQuery = true)
     void deleteByListingId(@Param("listingId") Long listingId);
 
+    interface BookingSummaryProjection {
+        Long getId();
+        Long getListingId();
+        String getClientName();
+        LocalDate getCheckInDate();
+        LocalDate getCheckOutDate();
+        String getStatus();
+    }
+
+    @Query("SELECT b.id as id, b.listing.id as listingId, b.user.firstName as clientName, " +
+            "b.checkInDate as checkInDate, b.checkOutDate as checkOutDate, b.status as status " +
+            "FROM Booking b WHERE b.listing.id IN :listingIds")
+    List<BookingSummaryProjection> findSummariesByListingIds(@Param("listingIds") Set<Long> listingIds);
+
+    @Query("SELECT b FROM Booking b " +
+            "JOIN FETCH b.listing l " +
+            "JOIN FETCH b.user " +
+            "WHERE l.host.id = :hostId " +
+            "ORDER BY b.checkInDate DESC")
+    List<Booking> findAllByListingHostId(@Param("hostId") Long hostId);
 }

@@ -2,10 +2,11 @@ package com.party.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Data
+@Getter
+@Setter
+@ToString(exclude = {"images", "videos", "amenities", "bookings"})
 @NoArgsConstructor
 @Entity
 @Table(name = "listing_video")

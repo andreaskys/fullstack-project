@@ -1,6 +1,8 @@
 package com.party.backend.service;
 
 import com.party.backend.document.ListingDocument;
+import com.party.backend.dto.booking.BookingSummaryDTO;
+import com.party.backend.dto.HostListingDTO;
 import com.party.backend.dto.listing.ListingRequestDTO;
 import com.party.backend.dto.listing.ListingResponseDTO;
 import com.party.backend.exception.UnauthorizedOperationException;
@@ -19,10 +21,13 @@ import com.party.backend.model.ListingVideo;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.data.elasticsearch.core.query.StringQuery;
+import com.party.backend.model.ListingImage;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static co.elastic.clients.elasticsearch.watcher.PagerDutyContextType.Image;
 
 @Service
 @RequiredArgsConstructor
@@ -113,16 +118,42 @@ public class ListingService {
     }
 
     @Transactional
-    public ListingResponseDTO createListing(ListingRequestDTO request, User host){
-        Set<Amenity> amenities = new HashSet<>(amenityRepository.findAllById(request.getAmenityIds()));
+    public ListingResponseDTO createListing(ListingRequestDTO request, User host) {
         Listing listing = new Listing();
         listing.setTitle(request.getTitle());
         listing.setDescription(request.getDescription());
         listing.setLocation(request.getLocation());
         listing.setPrice(request.getPrice());
         listing.setMaxGuests(request.getMaxGuests());
-        listing.setAmenities(amenities);
         listing.setHost(host);
+
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            boolean isFirstImage = true;
+            for (String imageUrl : request.getImageUrls()) {
+                ListingImage image = new ListingImage();
+                image.setImageUrl(imageUrl);
+                image.setListing(listing);
+                if (isFirstImage) {
+                    image.setCover(true);
+                    isFirstImage = false;
+                } else {
+                    image.setCover(false);
+                }
+                listing.getImages().add(image);
+            }
+        }
+        if (request.getVideoUrls() != null && !request.getVideoUrls().isEmpty()) {
+            for (String videoUrl : request.getVideoUrls()) {
+                ListingVideo video = new ListingVideo();
+                video.setVideoUrl(videoUrl);
+                video.setListing(listing);
+                listing.getVideos().add(video);
+            }
+        }
+        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
+            Set<Amenity> amenities = new HashSet<>(amenityRepository.findAllById(request.getAmenityIds()));
+            listing.setAmenities(amenities);
+        }
         Listing savedListing = listingRepository.save(listing);
         listingSearchRepository.save(mapToListingDocument(savedListing));
         return mapToListingResponse(savedListing);
@@ -173,6 +204,47 @@ public class ListingService {
         bookingRepository.deleteByListingId(listingId);
         listingRepository.deleteAmenitiesByListingId(listingId);
         listingRepository.delete(listing);
+    }
+
+    @Transactional(readOnly = true)
+    public List<HostListingDTO> getListingsForHost(User host) {
+        List<Listing> listings = listingRepository.findByHostId(host.getId());
+        if (listings.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> listingIds = listings.stream().map(Listing::getId).collect(Collectors.toSet());
+        Map<Long, String> coverImageByListingId = listingImageRepository.findCoverImagesForListingIds(listingIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ListingImageRepository.CoverImageProjection::getListingId,
+                        ListingImageRepository.CoverImageProjection::getImageUrl,
+                        (existing, replacement) -> existing
+                ));
+        Map<Long, List<BookingSummaryDTO>> bookingsByListingId = new HashMap<>();
+        bookingRepository.findSummariesByListingIds(listingIds)
+                .forEach(projection -> {
+                    bookingsByListingId
+                            .computeIfAbsent(projection.getListingId(), k -> new ArrayList<>())
+                            .add(mapProjectionToDto(projection));
+                });
+        return listings.stream().map(listing -> {
+            HostListingDTO listingDTO = new HostListingDTO();
+            listingDTO.setId(listing.getId());
+            listingDTO.setTitle(listing.getTitle());
+            listingDTO.setImageUrl(coverImageByListingId.get(listing.getId()));
+            listingDTO.setBookings(bookingsByListingId.getOrDefault(listing.getId(), List.of()));
+            return listingDTO;
+        }).collect(Collectors.toList());
+    }
+
+    private BookingSummaryDTO mapProjectionToDto(BookingRepository.BookingSummaryProjection projection) {
+        BookingSummaryDTO dto = new BookingSummaryDTO();
+        dto.setId(projection.getId());
+        dto.setClientName(projection.getClientName());
+        dto.setCheckInDate(projection.getCheckInDate());
+        dto.setCheckOutDate(projection.getCheckOutDate());
+        dto.setStatus(projection.getStatus().toString());
+        return dto;
     }
 
     @Transactional

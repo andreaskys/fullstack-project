@@ -86,6 +86,14 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<BookingResponseDTO> getBookingsForHost(User host) {
+        List<Booking> bookings = bookingRepository.findAllByListingHostId(host.getId());
+        return bookings.stream()
+                .map(this::mapToBookingResponse)
+                .collect(Collectors.toList());
+    }
+
     private BookingResponseDTO mapToBookingResponse(Booking booking) {
         BookingResponseDTO response = new BookingResponseDTO();
         response.setId(booking.getId());

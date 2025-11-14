@@ -1,5 +1,6 @@
 package com.party.backend.controller;
 
+import com.party.backend.dto.HostListingDTO;
 import com.party.backend.dto.booking.BookingResponseDTO;
 import com.party.backend.dto.listing.ListingRequestDTO;
 import com.party.backend.dto.listing.ListingResponseDTO;
@@ -93,6 +94,13 @@ public class ListingController {
             @RequestParam("query") String query
     ) {
         return ResponseEntity.ok(listingService.searchListings(query));
+    }
+
+    @GetMapping("/my-listings")
+    public ResponseEntity<List<HostListingDTO>> getHostListings(
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(listingService.getListingsForHost(currentUser));
     }
 
 

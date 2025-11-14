@@ -2,20 +2,21 @@ package com.party.backend.model;
 
 import com.party.backend.model.enums.Role;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
+@ToString(exclude = {"listings", "bookings", "chatMessages"})
 @Entity
 @Table(name="users")
 public class User implements UserDetails {
@@ -52,6 +53,9 @@ public class User implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
+
+    @OneToMany(mappedBy = "sender")
+    private Set<ChatMessage> chatMessages = new HashSet<>();
 
     @Override
     public String getUsername() {

@@ -18,10 +18,11 @@ export interface UseChatReturn {
     error: string | null;
 }
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/ws';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const SOCKET_URL = `${API_BASE_URL}/ws`;
 
 export const useChat = (roomId: string): UseChatReturn => {
-    const { token, isAuthenticated } = useAuth();
+    const { token, isAuthenticated, logout } = useAuth();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -34,21 +35,34 @@ export const useChat = (roomId: string): UseChatReturn => {
             return;
         }
 
+        const fetchHistory = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/chat/${roomId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (res.status === 403) {
+                    logout();
+                    throw new Error("Não autorizado a ver este chat.");
+                }
+                if (!res.ok) {
+                    throw new Error("Falha ao buscar histórico de mensagens.");
+                }
+
+                const history = await res.json() as ChatMessage[];
+                setMessages(history);
+
+            } catch (err: any) {
+                setError(err.message);
+            }
+        };
+
         const client = new Client({
-            brokerURL: SOCKET_URL,
-
-            webSocketFactory: () => {
-                return new SockJS(SOCKET_URL);
-            },
-
-            connectHeaders: {
-                Authorization: `Bearer ${token}`,
-            },
-
-            debug: (str) => {
-                console.log(new Date(), str);
-            },
-
+            webSocketFactory: () => new SockJS(SOCKET_URL),
+            connectHeaders: { Authorization: `Bearer ${token}` },
+            debug: (str) => { console.log(new Date(), str); },
             reconnectDelay: 5000,
         });
 
@@ -56,9 +70,9 @@ export const useChat = (roomId: string): UseChatReturn => {
             setIsConnected(true);
             setError(null);
             console.log('Ligado ao WebSocket:', frame);
-
+            fetchHistory();
             subscriptionRef.current = client.subscribe(
-                `/topic/chat/${roomId}`,
+                `/topic/${roomId}`,
                 (message: IMessage) => {
                     const newMessage = JSON.parse(message.body) as ChatMessage;
                     setMessages((prevMessages) => [...prevMessages, newMessage]);
@@ -77,7 +91,6 @@ export const useChat = (roomId: string): UseChatReturn => {
         };
 
         client.activate();
-
         stompClientRef.current = client;
 
         return () => {
@@ -87,7 +100,7 @@ export const useChat = (roomId: string): UseChatReturn => {
                 setIsConnected(false);
             }
         };
-    }, [roomId, isAuthenticated, token]);
+    }, [roomId, isAuthenticated, token, logout]);
 
     const sendMessage = (content: string) => {
         if (!stompClientRef.current || !isConnected || !token) {
@@ -107,7 +120,7 @@ export const useChat = (roomId: string): UseChatReturn => {
             };
 
             stompClientRef.current.publish({
-                destination: `/app/chat.sendMessage/${roomId}`,
+                destination: `/app/${roomId}`,
                 body: JSON.stringify(chatMessage),
             });
 

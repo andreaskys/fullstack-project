@@ -1,8 +1,7 @@
 package com.party.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -17,8 +16,10 @@ import java.util.Set;
                 @NamedAttributeNode("amenities")
         }
 )
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
+@ToString(exclude = {"images", "videos", "amenities", "bookings"})
 @Entity
 @Table(name="listing")
 public class Listing {
@@ -66,6 +67,12 @@ public class Listing {
     )
     private Set<Amenity> amenities = new HashSet<>();
 
+    @OneToMany(
+            mappedBy = "listing",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private Set<Booking> bookings = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {
