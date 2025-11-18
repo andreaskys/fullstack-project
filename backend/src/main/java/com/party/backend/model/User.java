@@ -16,7 +16,7 @@ import java.util.Set;
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = {"listings", "bookings", "chatMessages"})
+@ToString
 @Entity
 @Table(name="users")
 public class User implements UserDetails {
@@ -49,13 +49,28 @@ public class User implements UserDetails {
         createdAt = LocalDateTime.now();
     }
 
+    @OneToMany(mappedBy = "host")
+    @ToString.Exclude
+    private Set<Listing> listings = new HashSet<>();
+
+    @OneToMany(mappedBy = "user")
+    @ToString.Exclude
+    private Set<Booking> bookings = new HashSet<>();
+
+    @OneToMany(mappedBy = "sender")
+    @ToString.Exclude
+    private Set<ChatMessage> chatMessages = new HashSet<>();
+
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
-    @OneToMany(mappedBy = "sender")
-    private Set<ChatMessage> chatMessages = new HashSet<>();
+    @Override
+    public String getPassword() {
+        return this.password;
+    }
 
     @Override
     public String getUsername() {

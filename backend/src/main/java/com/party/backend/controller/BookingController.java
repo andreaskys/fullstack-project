@@ -44,5 +44,13 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getBookingsForHost(currentUser));
     }
 
-    // TODO: Adicionar endpoints para o host ver as reservas do seu espaço (GET /api/listings/{id}/bookings)
+    @DeleteMapping("/{bookingId}")
+    public ResponseEntity<Void> deleteBooking(
+            @PathVariable Long bookingId,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        bookingService.deleteBooking(bookingId, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
 }

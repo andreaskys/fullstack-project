@@ -1,6 +1,7 @@
 package com.party.backend.service;
 
 import com.party.backend.dto.ChatMessageDTO;
+import com.party.backend.dto.NotificationDTO;
 import com.party.backend.exception.ResourceNotFoundException;
 import com.party.backend.exception.UnauthorizedOperationException;
 import com.party.backend.model.Booking;
@@ -10,12 +11,14 @@ import com.party.backend.repository.BookingRepository;
 import com.party.backend.repository.ChatMessageRepository;
 import com.party.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService {
@@ -23,10 +26,11 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public ChatMessage saveMessage(ChatMessageDTO chatMessageDTO, Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking booking = bookingRepository.findByIdWithDetails(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva não encontrada: " + bookingId));
 
         User sender = userRepository.findById(chatMessageDTO.getSenderId())
@@ -35,6 +39,20 @@ public class ChatService {
         message.setBooking(booking);
         message.setSender(sender);
         message.setContent(chatMessageDTO.getContent());
+
+        User host = booking.getListing().getHost();
+        User client = booking.getUser();
+        User recipient = sender.getId().equals(client.getId()) ? host : client;
+
+        log.info("Sending chat notification from {} to {}",
+                sender.getFirstName(), recipient.getFirstName());
+
+        NotificationDTO notification = new NotificationDTO(
+                "Nova mensagem de " + sender.getFirstName(),
+                "/chat/" + bookingId
+        );
+        notificationService.sendNotificationToUser(recipient, notification);
+
         return chatMessageRepository.save(message);
     }
 

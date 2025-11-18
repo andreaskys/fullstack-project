@@ -26,7 +26,7 @@ public class StorageService {
     public String uploadFile(MultipartFile file) {
         try {
             String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
-            String fileName = UUID.randomUUID().toString() + extension;
+            String fileName = UUID.randomUUID() + extension;
 
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(BUCKET_NAME)

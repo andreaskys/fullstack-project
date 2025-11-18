@@ -19,7 +19,7 @@ import java.util.Set;
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = {"images", "videos", "amenities", "bookings"})
+@ToString
 @Entity
 @Table(name="listing")
 public class Listing {

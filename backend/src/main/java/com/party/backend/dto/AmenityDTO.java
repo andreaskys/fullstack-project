@@ -10,5 +10,4 @@ import lombok.NoArgsConstructor;
 public class AmenityDTO {
     private Integer id;
     private String name;
-    // private String iconSvg; // (Podemos adicionar isto no futuro)
 }

@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@ToString(exclude = {"images", "videos", "amenities", "bookings"})
+@ToString
 @NoArgsConstructor
 @Entity
 @Table(name = "chat_message")

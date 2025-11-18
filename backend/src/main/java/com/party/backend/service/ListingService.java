@@ -10,6 +10,7 @@ import com.party.backend.model.*;
 import com.party.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.party.backend.exception.ResourceNotFoundException;
@@ -27,7 +28,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static co.elastic.clients.elasticsearch.watcher.PagerDutyContextType.Image;
 
 @Service
 @RequiredArgsConstructor
@@ -67,11 +67,9 @@ public class ListingService {
                 ));
         Map<Long, List<String>> amenitiesByListingId = new HashMap<>();
         amenityRepository.findAmenitiesForListingIds(listingIds)
-                .forEach(projection -> {
-                    amenitiesByListingId
-                            .computeIfAbsent(projection.getListingId(), k -> new ArrayList<>())
-                            .add(projection.getAmenityName());
-                });
+                .forEach(projection -> amenitiesByListingId
+                        .computeIfAbsent(projection.getListingId(), k -> new ArrayList<>())
+                        .add(projection.getAmenityName()));
         return listings.stream().map(listing -> {
             ListingResponseDTO response = new ListingResponseDTO();
             response.setId(listing.getId());
@@ -171,7 +169,33 @@ public class ListingService {
         listing.setLocation(request.getLocation());
         listing.setPrice(request.getPrice());
         listing.setMaxGuests(request.getMaxGuests());
-        if (request.getAmenityIds() != null) {
+
+        // (O orphanRemoval=true + .clear() trata disto)
+        // NOTA: Isto apaga os ficheiros do MinIO ANTES de adicionar os novos.
+        // TODO: Esta lógica de 'delete' ainda está a dar bugs.
+        listing.getImages().clear();
+        listing.getVideos().clear();
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            boolean isFirstImage = true;
+            for (String imageUrl : request.getImageUrls()) {
+                ListingImage image = new ListingImage();
+                image.setImageUrl(imageUrl);
+                image.setListing(listing);
+                image.setCover(isFirstImage);
+                isFirstImage = false;
+                listing.getImages().add(image);
+            }
+        }
+        if (request.getVideoUrls() != null && !request.getVideoUrls().isEmpty()) {
+            for (String videoUrl : request.getVideoUrls()) {
+                ListingVideo video = new ListingVideo();
+                video.setVideoUrl(videoUrl);
+                video.setListing(listing);
+                listing.getVideos().add(video);
+            }
+        }
+        listing.getAmenities().clear();
+        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
             Set<Amenity> amenities = new HashSet<>(amenityRepository.findAllById(request.getAmenityIds()));
             listing.setAmenities(amenities);
         }
@@ -222,11 +246,9 @@ public class ListingService {
                 ));
         Map<Long, List<BookingSummaryDTO>> bookingsByListingId = new HashMap<>();
         bookingRepository.findSummariesByListingIds(listingIds)
-                .forEach(projection -> {
-                    bookingsByListingId
-                            .computeIfAbsent(projection.getListingId(), k -> new ArrayList<>())
-                            .add(mapProjectionToDto(projection));
-                });
+                .forEach(projection -> bookingsByListingId
+                        .computeIfAbsent(projection.getListingId(), k -> new ArrayList<>())
+                        .add(mapProjectionToDto(projection)));
         return listings.stream().map(listing -> {
             HostListingDTO listingDTO = new HostListingDTO();
             listingDTO.setId(listing.getId());
@@ -243,7 +265,7 @@ public class ListingService {
         dto.setClientName(projection.getClientName());
         dto.setCheckInDate(projection.getCheckInDate());
         dto.setCheckOutDate(projection.getCheckOutDate());
-        dto.setStatus(projection.getStatus().toString());
+        dto.setStatus(projection.getStatus());
         return dto;
     }
 
@@ -307,12 +329,31 @@ public class ListingService {
         }
         """.formatted(query);
         Query searchQuery = new StringQuery(jsonQuery);
-        SearchHits<ListingDocument> searchHits = elasticsearchOperations.search(
-                searchQuery,
-                ListingDocument.class
-        );
-        return searchHits.getSearchHits().stream()
-                .map(hit -> mapDocumentToResponse(hit.getContent()))
+        SearchHits<ListingDocument> searchHits = elasticsearchOperations.search(searchQuery, ListingDocument.class);
+
+        List<ListingDocument> documents = searchHits.getSearchHits().stream()
+                .map(SearchHit::getContent)
+                .toList();
+        if (documents.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> listingIds = documents.stream().map(ListingDocument::getId).collect(Collectors.toSet());
+        Set<Long> hostIds = documents.stream().map(ListingDocument::getHostId).collect(Collectors.toSet());
+        Map<Long, String> coverImageByListingId = listingImageRepository.findCoverImagesForListingIds(listingIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ListingImageRepository.CoverImageProjection::getListingId,
+                        ListingImageRepository.CoverImageProjection::getImageUrl,
+                        (existing, replacement) -> existing
+                ));
+        Map<Long, User> hostsById = userRepository.findAllById(hostIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+        return documents.stream()
+                .map(doc -> mapDocumentToResponse(
+                        doc,
+                        hostsById.get(doc.getHostId()),
+                        coverImageByListingId.get(doc.getId())
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -394,6 +435,7 @@ public class ListingService {
         doc.setLocation(listing.getLocation());
         doc.setPrice(listing.getPrice());
         doc.setMaxGuests(listing.getMaxGuests());
+        doc.setHostId(listing.getHost().getId());
         if (listing.getAmenities() != null) {
             List<String> amenityNames = listing.getAmenities().stream()
                     .map(Amenity::getName)
@@ -404,7 +446,7 @@ public class ListingService {
         return doc;
     }
 
-    private ListingResponseDTO mapDocumentToResponse(ListingDocument doc) {
+    private ListingResponseDTO mapDocumentToResponse(ListingDocument doc, User host, String coverImageUrl) {
         ListingResponseDTO response = new ListingResponseDTO();
         response.setId(doc.getId());
         response.setTitle(doc.getTitle());
@@ -413,6 +455,12 @@ public class ListingService {
         response.setPrice(doc.getPrice());
         response.setMaxGuests(doc.getMaxGuests());
         response.setAmenities(doc.getAmenities());
+        if (host != null) {
+            response.setHostName(host.getFirstName());
+        }
+        response.setImageUrls(coverImageUrl != null ? List.of(coverImageUrl) : List.of());
+        response.setRating(null);
+        response.setVideoUrls(List.of());
 
         return response;
     }

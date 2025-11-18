@@ -6,7 +6,7 @@ import lombok.*;
 
 @Getter
 @Setter
-@ToString(exclude = {"images", "videos", "amenities", "bookings"})
+@ToString
 @NoArgsConstructor
 @Entity
 @Table(name="listing_image")

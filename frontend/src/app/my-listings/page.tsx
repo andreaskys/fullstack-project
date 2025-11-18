@@ -110,12 +110,18 @@ export default function MyListingsPage() {
                                     <p className="text-sm text-gray-500">ID do Espaço: {listing.id}</p>
                                 </div>
                             </div>
-
-                            <DeleteListingButton
-                                listingId={listing.id}
-                                onDeleteSuccess={handleDeleteSuccess}
-                            />
-
+                            <div className="flex gap-2">
+                                <Link
+                                    href={`/edit-listing/${listing.id}`}
+                                    className="px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                                >
+                                    Editar
+                                </Link>
+                                <DeleteListingButton
+                                    listingId={listing.id}
+                                    onDeleteSuccess={handleDeleteSuccess}
+                                />
+                            </div>
                             <h3 className="text-lg font-semibold mb-2 border-t pt-4">Reservas Recebidas</h3>
                             {listing.bookings.length === 0 ? (
                                 <p className="text-sm text-gray-500">Nenhuma reserva para este espaço ainda.</p>

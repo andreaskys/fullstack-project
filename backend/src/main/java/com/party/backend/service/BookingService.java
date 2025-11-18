@@ -10,12 +10,12 @@ import com.party.backend.model.enums.BookingStatus;
 import com.party.backend.repository.BookingRepository;
 import com.party.backend.repository.ListingRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.party.backend.exception.BookingConflictException;
 import com.party.backend.exception.UnauthorizedOperationException;
-import com.party.backend.repository.ListingRepository;
-import com.party.backend.model.Listing;
+import com.party.backend.dto.NotificationDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,12 +23,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final ListingRepository listingRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request, User client) {
@@ -63,6 +65,21 @@ public class BookingService {
         booking.setStatus(BookingStatus.PENDING);
 
         Booking savedBooking = bookingRepository.save(booking);
+
+        User host = listing.getHost();
+        if (!client.getId().equals(host.getId())) {
+            log.info(" Sending booking notification to host: {} for listing: {}",
+                    host.getUsername(), listing.getTitle());
+
+            NotificationDTO notification = new NotificationDTO(
+                    "Nova Reserva feita por " + client.getFirstName() + " para " + listing.getTitle(),
+                    "/my-listings"
+            );
+            notificationService.sendNotificationToUser(host, notification);
+        } else {
+            log.warn("Skipping notification: Client and Host are the same user");
+        }
+
         return mapToBookingResponse(savedBooking);
     }
 
@@ -85,6 +102,33 @@ public class BookingService {
                 .map(this::mapToBookingResponse)
                 .collect(Collectors.toList());
     }
+
+    @Transactional
+    public void deleteBooking(Long bookingId, User currentUser) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva não encontrada com id: " + bookingId));
+        User host = booking.getListing().getHost();
+        User client = booking.getUser();
+        Long currentUserId = currentUser.getId();
+        if (!currentUserId.equals(client.getId()) && !currentUserId.equals(host.getId())) {
+            throw new UnauthorizedOperationException("Você não tem permissão para cancelar esta reserva.");
+        }
+        if (booking.getStatus() == BookingStatus.CONFIRMED &&
+                booking.getCheckInDate().isBefore(LocalDate.now())) {
+            throw new BookingConflictException("Não é possível cancelar uma reserva que já começou.");
+        }
+        log.info("🗑️ Deleting booking id: {} by user: {}", bookingId, currentUser.getUsername());
+        User notificationRecipient = currentUserId.equals(client.getId()) ? host : client;
+        String cancelledBy = currentUserId.equals(client.getId()) ? client.getFirstName() : "o anfitrião";
+        NotificationDTO notification = new NotificationDTO(
+                "Reserva cancelada por " + cancelledBy + " para " + booking.getListing().getTitle(),
+                currentUserId.equals(client.getId()) ? "/my-listings" : "/my-bookings"
+        );
+        notificationService.sendNotificationToUser(notificationRecipient, notification);
+        bookingRepository.delete(booking);
+        log.info("✅ Booking deleted successfully");
+    }
+
 
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getBookingsForHost(User host) {

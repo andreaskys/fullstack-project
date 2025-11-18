@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DateRange, RangeKeyDict, Range } from 'react-date-range';
+import { DateRange, Range } from 'react-date-range';
 import { addDays } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -63,19 +63,34 @@ export default function BookingWidget({ listingId, pricePerNight }: BookingWidge
                 })
             });
 
-            if (res.status === 403) { logout(); return; }
-            if (res.status === 409) { // Conflito de datas!
-                throw new Error("Estas datas já não estão disponíveis.");
-            }
-            if (!res.ok) {
-                throw new Error("Não foi possível criar a reserva.");
+            if (res.status === 403) {
+                logout();
+                return;
             }
 
-            alert("Reserva criada com sucesso!");
+            if (res.status === 409) {
+                setError("❌ As datas selecionadas já não estão disponíveis. Por favor, escolha outras datas.");
+                return;
+            }
+
+            if (res.status === 400) {
+                const errorData = await res.json();
+                setError(errorData.message || "Dados inválidos. Verifique as datas selecionadas.");
+                return;
+            }
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => null);
+                setError(errorData?.message || "Não foi possível criar a reserva. Tente novamente.");
+                return;
+            }
+
+            alert("✅ Reserva criada com sucesso!");
             router.push('/my-bookings');
 
         } catch (err: any) {
-            setError(err.message);
+            console.error('Booking error:', err);
+            setError("Erro ao criar reserva. Verifique sua conexão e tente novamente.");
         } finally {
             setIsLoading(false);
         }
@@ -104,22 +119,24 @@ export default function BookingWidget({ listingId, pricePerNight }: BookingWidge
                     <span>R$ {pricePerNight.toFixed(2)} x {numberOfNights} noites</span>
                     <span className="font-semibold">R$ {totalPrice.toFixed(2)}</span>
                 </div>
-                {/* TODO: Adicionar Taxa de Serviço */}
             </div>
+
             <div className="flex justify-between text-xl font-bold mt-4">
                 <span>Total</span>
                 <span>R$ {totalPrice.toFixed(2)}</span>
             </div>
 
             {error && (
-                <p className="text-sm text-red-600 mt-4 text-center">{error}</p>
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600 text-center">{error}</p>
+                </div>
             )}
 
             <button
                 onClick={handleBooking}
                 disabled={isLoading || numberOfNights === 0}
                 className="w-full mt-6 px-4 py-3 font-semibold text-white bg-blue-600 rounded-md
-                   hover:bg-blue-700 disabled:bg-gray-400"
+                   hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
                 {isLoading ? 'A reservar...' : 'Reservar'}
             </button>

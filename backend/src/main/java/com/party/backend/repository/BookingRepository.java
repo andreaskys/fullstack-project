@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -54,4 +55,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "WHERE l.host.id = :hostId " +
             "ORDER BY b.checkInDate DESC")
     List<Booking> findAllByListingHostId(@Param("hostId") Long hostId);
+
+    @Query("SELECT b FROM Booking b " +
+            "JOIN FETCH b.user " +
+            "JOIN FETCH b.listing l " +
+            "JOIN FETCH l.host " +
+            "WHERE b.id = :bookingId")
+    Optional<Booking> findByIdWithDetails(@Param("bookingId") Long bookingId);
 }
