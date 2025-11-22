@@ -1,145 +1,182 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { DateRange, Range } from 'react-date-range';
-import { addDays } from 'date-fns';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Calendar, Users, Star, PartyPopper } from "lucide-react"
+import { useRouter } from "next/navigation"
 
-import 'react-date-range/dist/styles.css';
-import 'react-date-range/dist/theme/default.css';
+interface BookingWidgetProps {
+    listingId: number
+    price: number
+    maxGuests: number
+    rating?: number
+    reviews?: number
+    isAuthenticated: boolean
+    isOwner: boolean
+}
 
-type BookingWidgetProps = {
-    listingId: number;
-    pricePerNight: number;
-};
+export default function BookingWidget({
+                                          listingId,
+                                          price,
+                                          maxGuests,
+                                          rating = 0,
+                                          reviews = 0,
+                                          isAuthenticated,
+                                          isOwner
+                                      }: BookingWidgetProps) {
+    const router = useRouter()
+    const [guests, setGuests] = useState(Math.min(50, maxGuests))
+    const [date, setDate] = useState("")
+    const [eventType, setEventType] = useState("")
 
-export default function BookingWidget({ listingId, pricePerNight }: BookingWidgetProps) {
-    const { token, isAuthenticated, logout } = useAuth();
-    const router = useRouter();
+    // Cálculos de preço
+    const serviceFee = Math.round(price * 0.1) // 10% de taxa
+    const total = price + serviceFee
 
-    const [dateRange, setDateRange] = useState<Range[]>([
-        {
-            startDate: new Date(),
-            endDate: addDays(new Date(), 1),
-            key: 'selection'
+    const handleBooking = (e: React.FormEvent) => {
+        e.preventDefault()
+
+        if (isOwner) {
+            alert("Você é o dono deste espaço!")
+            return
         }
-    ]);
 
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    let numberOfNights = 0;
-    if (dateRange[0].startDate && dateRange[0].endDate) {
-        const diffTime = Math.abs(dateRange[0].endDate.getTime() - dateRange[0].startDate.getTime());
-        numberOfNights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    }
-    const totalPrice = pricePerNight * numberOfNights;
-
-    const handleBooking = async () => {
         if (!isAuthenticated) {
-            router.push('/login');
-            return;
-        }
-        if (numberOfNights === 0) {
-            setError("Por favor, selecione pelo menos uma noite.");
-            return;
+            router.push(`/login?redirect=/listings/${listingId}`)
+            return
         }
 
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const res = await fetch('/api/bookings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    listingId: listingId,
-                    checkInDate: dateRange[0].startDate,
-                    checkOutDate: dateRange[0].endDate
-                })
-            });
-
-            if (res.status === 403) {
-                logout();
-                return;
-            }
-
-            if (res.status === 409) {
-                setError("❌ As datas selecionadas já não estão disponíveis. Por favor, escolha outras datas.");
-                return;
-            }
-
-            if (res.status === 400) {
-                const errorData = await res.json();
-                setError(errorData.message || "Dados inválidos. Verifique as datas selecionadas.");
-                return;
-            }
-
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => null);
-                setError(errorData?.message || "Não foi possível criar a reserva. Tente novamente.");
-                return;
-            }
-
-            alert("✅ Reserva criada com sucesso!");
-            router.push('/my-bookings');
-
-        } catch (err: any) {
-            console.error('Booking error:', err);
-            setError("Erro ao criar reserva. Verifique sua conexão e tente novamente.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        // Aqui entraria a lógica de enviar para a API
+        console.log("Reservando:", { listingId, date, guests, eventType })
+        alert("Funcionalidade de reserva será implementada aqui!")
+    }
 
     return (
-        <div className="p-6 border border-gray-300 rounded-lg bg-white shadow-lg mt-8">
-            <h3 className="text-2xl font-semibold mb-4">
-                R$ {pricePerNight.toFixed(2)}
-                <span className="text-base font-normal text-gray-500"> / noite</span>
-            </h3>
+        <Card className="border-2 shadow-2xl animate-slide-in-right bg-white">
+            <CardContent className="p-6 space-y-6">
 
-            <div className="flex justify-center">
-                <DateRange
-                    editableDateInputs={true}
-                    onChange={item => setDateRange([item.selection as Range])}
-                    moveRangeOnFirstSelection={false}
-                    ranges={dateRange}
-                    minDate={new Date()}
-                    rangeColors={['#2563eb']}
-                />
-            </div>
-
-            <div className="py-4 border-t border-b border-gray-200">
-                <div className="flex justify-between text-lg">
-                    <span>R$ {pricePerNight.toFixed(2)} x {numberOfNights} noites</span>
-                    <span className="font-semibold">R$ {totalPrice.toFixed(2)}</span>
+                {/* Cabeçalho com Preço e Rating */}
+                <div className="space-y-2">
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-4xl font-bold text-primary">R$ {price}</span>
+                        <span className="text-muted-foreground">/evento</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {rating > 0 && (
+                            <>
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                <span className="font-semibold text-foreground">{rating}</span>
+                                <span>·</span>
+                            </>
+                        )}
+                        <span>{reviews > 0 ? `${reviews} avaliações` : "Sem avaliações"}</span>
+                    </div>
                 </div>
-            </div>
 
-            <div className="flex justify-between text-xl font-bold mt-4">
-                <span>Total</span>
-                <span>R$ {totalPrice.toFixed(2)}</span>
-            </div>
+                <Separator />
 
-            {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600 text-center">{error}</p>
+                {/* Formulário */}
+                <form onSubmit={handleBooking} className="space-y-4">
+
+                    {/* Data */}
+                    <div className="space-y-2">
+                        <Label htmlFor="eventDate" className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            Data do Evento
+                        </Label>
+                        <Input
+                            id="eventDate"
+                            type="date"
+                            required
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            className="border-2 focus:border-primary transition-colors"
+                        />
+                    </div>
+
+                    {/* Tipo de Evento */}
+                    <div className="space-y-2">
+                        <Label htmlFor="eventType" className="flex items-center gap-2">
+                            <PartyPopper className="h-4 w-4 text-primary" />
+                            Tipo de Evento
+                        </Label>
+                        <Input
+                            id="eventType"
+                            placeholder="Ex: Casamento, Aniversário..."
+                            required
+                            value={eventType}
+                            onChange={(e) => setEventType(e.target.value)}
+                            className="border-2 focus:border-primary transition-colors"
+                        />
+                    </div>
+
+                    {/* Slider de Convidados */}
+                    <div className="space-y-2">
+                        <Label htmlFor="guests" className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Número de Convidados
+              </span>
+                            <span className="font-semibold text-primary">{guests}</span>
+                        </Label>
+                        <input
+                            id="guests"
+                            type="range"
+                            min="1"
+                            max={maxGuests}
+                            value={guests}
+                            onChange={(e) => setGuests(Number(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>1</span>
+                            <span>{maxGuests}</span>
+                        </div>
+                    </div>
+
+                    {/* Botão de Ação */}
+                    <Button
+                        type="submit"
+                        className="w-full bg-gradient-to-r from-primary to-blue-600 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] text-lg py-6 text-white font-bold"
+                    >
+                        {isAuthenticated ? "Solicitar Reserva" : "Faça Login para Reservar"}
+                    </Button>
+
+                    {!isAuthenticated && (
+                        <p className="text-xs text-center text-muted-foreground">
+                            Você será redirecionado para o login.
+                        </p>
+                    )}
+                    {isAuthenticated && (
+                        <p className="text-xs text-center text-muted-foreground">
+                            Você não será cobrado ainda.
+                        </p>
+                    )}
+                </form>
+
+                <Separator />
+
+                {/* Resumo de Preços */}
+                <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Preço base</span>
+                        <span className="font-medium">R$ {price}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Taxa de serviço</span>
+                        <span className="font-medium">R$ {serviceFee}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-lg font-bold">
+                        <span>Total</span>
+                        <span className="text-primary">R$ {total}</span>
+                    </div>
                 </div>
-            )}
-
-            <button
-                onClick={handleBooking}
-                disabled={isLoading || numberOfNights === 0}
-                className="w-full mt-6 px-4 py-3 font-semibold text-white bg-blue-600 rounded-md
-                   hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-            >
-                {isLoading ? 'A reservar...' : 'Reservar'}
-            </button>
-        </div>
-    );
+            </CardContent>
+        </Card>
+    )
 }

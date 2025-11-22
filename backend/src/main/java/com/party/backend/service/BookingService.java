@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.party.backend.exception.BookingConflictException;
 import com.party.backend.exception.UnauthorizedOperationException;
 import com.party.backend.dto.NotificationDTO;
+import com.party.backend.dto.ConversationDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -136,6 +137,34 @@ public class BookingService {
         return bookings.stream()
                 .map(this::mapToBookingResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConversationDTO> getUserConversations(User currentUser) {
+        List<Booking> bookings = bookingRepository.findConversationsForUser(currentUser.getId());
+        return bookings.stream().map(booking -> {
+            ConversationDTO dto = new ConversationDTO();
+            dto.setBookingId(booking.getId());
+            dto.setListingTitle(booking.getListing().getTitle());
+            dto.setListingLocation(booking.getListing().getLocation());
+            dto.setCheckInDate(booking.getCheckInDate());
+            dto.setCheckOutDate(booking.getCheckOutDate());
+            dto.setStatus(booking.getStatus().toString());
+            User client = booking.getUser();
+            User host = booking.getListing().getHost();
+
+            if (currentUser.getId().equals(client.getId())) {
+                dto.setOtherUserName(host.getFirstName() + " " + host.getLastName() + " (Anfitrião)");
+            } else {
+                dto.setOtherUserName(client.getFirstName() + " " + client.getLastName());
+            }
+
+            // TODO: No futuro, buscar a última mensagem real do ChatMessageRepository
+            dto.setLastMessageTime(null);
+            dto.setUnreadCount(0);
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     private BookingResponseDTO mapToBookingResponse(Booking booking) {

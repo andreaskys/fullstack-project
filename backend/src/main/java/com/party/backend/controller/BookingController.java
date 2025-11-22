@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.party.backend.dto.ConversationDTO;
 
 import java.util.List;
 
@@ -51,6 +52,13 @@ public class BookingController {
     ) {
         bookingService.deleteBooking(bookingId, currentUser);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/conversations")
+    public ResponseEntity<List<ConversationDTO>> getUserConversations(
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(bookingService.getUserConversations(currentUser));
     }
 
 }
