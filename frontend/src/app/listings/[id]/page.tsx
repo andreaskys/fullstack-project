@@ -5,7 +5,6 @@ import { useRouter, useParams } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 
-// Imports UI (Shadcn & Lucide)
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -30,11 +29,9 @@ import {
     Loader2
 } from "lucide-react"
 
-// Tipos e Componentes Lógicos
-import { ListingCard } from "../../../../types" // Ajuste o caminho conforme sua estrutura
+import { ListingCard } from "../../../../types" 
 import ListingActions from "@/components/ListingActions"
 
-// Mapeamento de ícones para bater com o design do v0
 const amenityIcons: Record<string, any> = {
     "Professional sound system": Music,
     "Som": Music,
@@ -58,16 +55,13 @@ export default function ListingDetailPage() {
     const id = params.id as string
     const router = useRouter()
 
-    // --- ESTADOS ---
     const [listing, setListing] = useState<ListingCard | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Estados Visuais
     const [selectedImageIndex, setSelectedImageIndex] = useState(0)
     const [isFavorite, setIsFavorite] = useState(false)
 
-    // --- FETCH DATA ---
     useEffect(() => {
         const fetchListing = async () => {
             if (!id) return
@@ -89,7 +83,6 @@ export default function ListingDetailPage() {
         fetchListing()
     }, [id])
 
-    // --- LOADING STATE ---
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-accent/10 to-background">
@@ -101,7 +94,6 @@ export default function ListingDetailPage() {
         )
     }
 
-    // --- ERROR STATE ---
     if (error || !listing) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background via-accent/10 to-background p-4">
@@ -115,7 +107,6 @@ export default function ListingDetailPage() {
         )
     }
 
-    // Preparar imagens (Fallback se estiver vazio)
     const images = listing.imageUrls && listing.imageUrls.length > 0
         ? listing.imageUrls
         : ["/placeholder.svg"]
@@ -148,7 +139,7 @@ export default function ListingDetailPage() {
                                     fill
                                     className="object-cover transition-transform duration-700 group-hover:scale-105"
                                     priority
-                                    unoptimized // Importante para uploads locais
+                                    unoptimized 
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -272,7 +263,6 @@ export default function ListingDetailPage() {
                                 <div className="flex items-start gap-6">
                                     <div className="relative h-20 w-20 rounded-full overflow-hidden ring-4 ring-primary/10 shrink-0 bg-gray-100 flex items-center justify-center">
                                         {listing.hostName ? (
-                                            // Se tiver avatar no futuro, use Image. Por enquanto, iniciais.
                                             <span className="text-2xl font-bold text-primary">{listing.hostName.charAt(0)}</span>
                                         ) : (
                                             <Users className="h-8 w-8 text-gray-400" />

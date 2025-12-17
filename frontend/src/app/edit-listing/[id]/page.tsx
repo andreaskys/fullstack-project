@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useParams } from 'next/navigation';
 import { AmenityDTO, ListingCard } from "../../../../types";
@@ -15,7 +15,6 @@ export default function EditListingPage() {
     const params = useParams();
     const listingId = params.id as string;
 
-    // --- Estados do Formulário ---
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [location, setLocation] = useState('');
@@ -29,7 +28,6 @@ export default function EditListingPage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // --- Lógica de Fetch (igual ao seu código funcional) ---
     useEffect(() => {
         if (!isAuthenticated) {
             router.push('/login');
@@ -42,14 +40,20 @@ export default function EditListingPage() {
             setIsLoading(true);
             try {
                 const amenitiesRes = await fetch('/api/amenities');
-                if (!amenitiesRes.ok) throw new Error('Falha ao buscar comodidades');
+                if (!amenitiesRes.ok) {
+                    setError('Falha ao buscar comodidades');
+                    return;
+                }
                 const amenitiesData: AmenityDTO[] = await amenitiesRes.json();
                 setAllAmenities(amenitiesData);
 
                 const listingRes = await fetch(`/api/listings/${listingId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!listingRes.ok) throw new Error('Falha ao buscar dados do espaço');
+                if (!listingRes.ok) {
+                    setError('Falha ao buscar dados do espaço');
+                    return;
+                }
 
                 const listingData: ListingCard = await listingRes.json();
 
@@ -73,10 +77,9 @@ export default function EditListingPage() {
             }
         };
 
-        fetchListingData();
+        void fetchListingData();
     }, [isAuthenticated, router, listingId, token]);
 
-    // --- Funções Helper (iguais ao seu código funcional) ---
     const handleAmenityChange = (amenityId: number) => {
         setSelectedAmenities((prev) => {
             const newSet = new Set(prev);
@@ -94,7 +97,7 @@ export default function EditListingPage() {
     const removeImage = (urlToRemove: string) => setImageUrls(prev => prev.filter(url => url !== urlToRemove));
     const removeVideo = (urlToRemove: string) => setVideoUrls(prev => prev.filter(url => url !== urlToRemove));
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
         if (imageUrls.length === 0) {
@@ -117,7 +120,8 @@ export default function EditListingPage() {
 
             if (!res.ok) {
                 if (res.status === 403) { logout(); return; }
-                throw new Error('Falha ao atualizar o anúncio.');
+                setError('Falha ao atualizar o anúncio.');
+                return;
             }
 
             alert("Espaço atualizado com sucesso!");
@@ -128,7 +132,6 @@ export default function EditListingPage() {
         }
     };
 
-    // --- Loading State com novo design ---
     if (isLoading) return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="text-center">
@@ -138,7 +141,6 @@ export default function EditListingPage() {
         </div>
     );
 
-    // --- O NOVO RETURN (Design v0 + Funcionalidade) ---
     return (
         <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-gray-50 to-blue-50/30 py-12">
             <div className="container mx-auto px-4 max-w-4xl">

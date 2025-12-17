@@ -20,7 +20,6 @@ export default function RegisterPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        // Handle registration logic here
         console.log('Register:', formData)
     }
 

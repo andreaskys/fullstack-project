@@ -13,7 +13,7 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const { login } = useAuth(); // A nossa função de login do "cérebro"
+    const { login } = useAuth(); 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
