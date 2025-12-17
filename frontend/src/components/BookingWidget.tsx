@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -28,16 +29,18 @@ export default function BookingWidget({
                                           isAuthenticated,
                                           isOwner
                                       }: BookingWidgetProps) {
+    const { token } = useAuth()
     const router = useRouter()
     const [guests, setGuests] = useState(Math.min(50, maxGuests))
     const [date, setDate] = useState("")
     const [eventType, setEventType] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
 
     // Cálculos de preço
     const serviceFee = Math.round(price * 0.1) // 10% de taxa
     const total = price + serviceFee
 
-    const handleBooking = (e: React.FormEvent) => {
+    const handleBooking = async (e: React.FormEvent) => {
         e.preventDefault()
 
         if (isOwner) {
@@ -50,9 +53,46 @@ export default function BookingWidget({
             return
         }
 
-        // Aqui entraria a lógica de enviar para a API
-        console.log("Reservando:", { listingId, date, guests, eventType })
-        alert("Funcionalidade de reserva será implementada aqui!")
+        if (!date) {
+            alert("Por favor, selecione uma data para o evento.")
+            return
+        }
+
+        setIsLoading(true)
+
+        const checkOutObj = new Date(date)
+        checkOutObj.setUTCDate(checkOutObj.getUTCDate() + 1)
+        const checkOutDate = checkOutObj.toISOString().split('T')[0]
+
+        try {
+            const res = await fetch("/api/bookings", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    listingId,
+                    checkInDate: date,
+                    checkOutDate: checkOutDate,
+                    numberOfGuests: guests,
+                    totalPrice: total
+                })
+            })
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => null)
+                throw new Error(data?.message || "Falha ao criar reserva")
+            }
+
+            alert("Reserva solicitada com sucesso!")
+            router.push("/my-bookings")
+        } catch (error: any) {
+            console.error("Erro na reserva:", error)
+            alert(error.message || "Ocorreu um erro ao tentar realizar a reserva. Tente novamente.")
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -141,9 +181,10 @@ export default function BookingWidget({
                     {/* Botão de Ação */}
                     <Button
                         type="submit"
+                        disabled={isLoading}
                         className="w-full bg-gradient-to-r from-primary to-blue-600 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] text-lg py-6 text-white font-bold"
                     >
-                        {isAuthenticated ? "Solicitar Reserva" : "Faça Login para Reservar"}
+                        {isLoading ? "Processando..." : (isAuthenticated ? "Solicitar Reserva" : "Faça Login para Reservar")}
                     </Button>
 
                     {!isAuthenticated && (
