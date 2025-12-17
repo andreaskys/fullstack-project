@@ -284,7 +284,7 @@ export default function MyListingsPage() {
                                                         </div>
 
                                                         <Link
-                                                            href={`/chat/${booking.id}`}
+                                                            href={`/chat?bookingId=${booking.id}`}
                                                             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all hover:scale-105"
                                                         >
                                                             <MessageSquare className="h-4 w-4" />

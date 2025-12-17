@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import ChatBox from '@/components/ChatBox';
 import { MessageSquare, Calendar, MapPin, User, Search, ChevronLeft } from 'lucide-react';
@@ -21,6 +21,7 @@ type BookingConversation = {
 export default function UnifiedChatPage() {
     const { token, isAuthenticated } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [conversations, setConversations] = useState<BookingConversation[]>([]);
     const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
@@ -54,6 +55,16 @@ export default function UnifiedChatPage() {
 
             const data: BookingConversation[] = await res.json();
             setConversations(data);
+
+            // Verifica se há um bookingId na URL para selecionar automaticamente
+            const bookingIdParam = searchParams.get('bookingId');
+            if (bookingIdParam) {
+                const targetId = parseInt(bookingIdParam);
+                if (data.some(c => c.bookingId === targetId)) {
+                    setSelectedBookingId(targetId);
+                    return;
+                }
+            }
 
             // Seleciona a primeira conversa automaticamente
             if (data.length > 0 && !selectedBookingId) {
